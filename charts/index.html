@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Kafkanem RUSH Pipeline</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Highcharts -->
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <script src="https://code.highcharts.com/modules/heatmap.js"></script>
+  <script src="https://code.highcharts.com/modules/export-data.js"></script>
+
+
+  <style>
+    :root {
+      --bg: #020617;
+      --bg-card: #050b23;
+      --accent: #38bdf8;
+      --accent-alt: #22c55e;
+      --accent-warn: #facc15;
+      --accent-bad: #fb7185;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-subtle: rgba(148, 163, 184, 0.2);
+      --shadow-soft: 0 18px 45px rgba(58, 82, 137, 0.85);
+      --radius-xl: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro",
+        "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, #0f172a 0, #020617 35%, #000 90%);
+      color: var(--text-main);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px 22px 32px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    header .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .app-title {
+      font-size: 26px;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot-wrap {
+      padding: 4px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(56,189,248,0.4), transparent);
+    }
+
+    .logo-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #38bdf8, #1d4ed8);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.9);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .subtitle strong {
+      color: #f97316;
+      font-weight: 600;
+    }
+
+    .header-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      padding: 4px 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(120deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.5));
+      backdrop-filter: blur(9px);
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
+    }
+
+    body.stale .pill-dot {
+      background: #f97316;
+      box-shadow: 0 0 12px rgba(249,115,22,0.9);
+    }
+
+    /* Executive summary band */
+    .exec-band {
+      margin-bottom: 18px;
+      border-radius: 22px;
+      padding: 10px 16px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background:
+        radial-gradient(circle at top left, rgba(56,189,248,0.18), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(59,130,246,0.16), transparent 60%),
+        linear-gradient(120deg, rgba(15,23,42,0.95), rgba(15,23,42,0.9));
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: 0 14px 40px rgba(15,23,42,0.9);
+    }
+
+    .exec-main {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .exec-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+    }
+
+    .exec-headline {
+      font-size: 18px;
+      font-weight: 550;
+    }
+
+    body.stale .exec-headline {
+      color: #f97316;
+    }
+
+    .exec-subline {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .exec-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .status-chip {
+      border-radius: 999px;
+      padding: 3px 9px;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.9);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent-alt);
+      box-shadow: 0 0 12px rgba(34,197,94,0.9);
+    }
+
+    .status-chip.warn .status-dot {
+      background: var(--accent-warn);
+      box-shadow: 0 0 12px rgba(250,204,21,0.9);
+    }
+
+    .status-chip.bad .status-dot {
+      background: var(--accent-bad);
+      box-shadow: 0 0 12px rgba(251,113,133,0.9);
+    }
+
+    body.stale .status-chip {
+      border-color: rgba(249,115,22,0.8);
+    }
+
+    .exec-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .tiny-label {
+      color: var(--text-muted);
+    }
+
+    /* KPI grid */
+    .grid-kpi {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,0.32), transparent 60%),
+        radial-gradient(circle at bottom right, rgba(15,23,42,1), rgba(15,23,42,0.95));
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: var(--shadow-soft);
+      padding: 14px 16px 11px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.12s ease-out, transform 0.12s ease-out;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(56,189,248,0.16), transparent 60%);
+      opacity: 0.33;
+      pointer-events: none;
+    }
+
+    .card-inner { position: relative; z-index: 1; }
+
+    .card:hover {
+      border-color: rgba(56,189,248,0.35);
+      transform: translateY(-1px);
+    }
+
+    .card.stale {
+      opacity: 0.8;
+      border-color: rgba(148,163,184,0.25);
+    }
+
+    .card.stale .kpi-value {
+      color: #6b7280;
+    }
+
+    .card.stale .kpi-footnote span.accent {
+      color: #9ca3af;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .kpi-footnote {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .kpi-footnote span.accent {
+      color: #38bdf8;
+      font-weight: 500;
+    }
+
+    .tag {
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      color: var(--text-muted);
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    select,
+    button {
+      font-family: inherit;
+      font-size: 12px;
+    }
+
+    select {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      padding: 4px 26px 4px 10px;
+      color: var(--text-main);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      outline: none;
+      min-width: 110px;
+    }
+
+    button.refresh-btn {
+      border-radius: 999px;
+      padding: 5px 12px;
+      border: 1px solid rgba(56, 189, 248, 0.8);
+      background:
+        radial-gradient(circle at top left, rgba(56,189,248,0.3), transparent 55%),
+        rgba(15,23,42,0.98);
+      color: #e0f2fe;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+      box-shadow: 0 8px 20px rgba(15,23,42,0.8);
+    }
+
+    button.refresh-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 35px rgba(15,23,42,0.9);
+    }
+
+    .grid-main {
+      display: grid;
+      grid-template-columns: 2.1fr 1.4fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .grid-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 4px;
+    }
+
+    .card-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 260px;
+    }
+
+    .chart-container.tall { height: 290px; }
+    .chart-container.short { height: 210px; }
+
+    footer {
+      margin-top: 22px;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    footer span strong {
+      color: #38bdf8;
+      font-weight: 500;
+    }
+
+    @media (max-width: 1100px) {
+      .grid-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-main { grid-template-columns: 1fr; }
+      .grid-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 780px) {
+      .page { padding-inline: 14px; }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .header-meta { align-items: flex-start; }
+      .grid-kpi { grid-template-columns: 1fr 1fr; }
+      .grid-row { grid-template-columns: 1fr; }
+      .exec-band {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .exec-right { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="title-block">
+        <div class="app-title">
+          <span class="logo-dot-wrap"><span class="logo-dot"></span></span>
+          Kafkanem RUSH Pipeline
+        </div>
+        <div class="subtitle">
+          Live RUSH feeds → Azure MySQL performance based on the most recent RUSH run.
+          <strong>All speeds in mph. All times in ms.</strong>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="pill">
+          <span class="pill-dot"></span>
+          <span id="health-status">Pipeline: checking…</span>
+        </div>
+        <div>
+          Data source: <strong>kafka_pipeline_rush</strong> · Latency view:
+          <strong>kafka_latency_ms_rush</strong>
+        </div>
+      </div>
+    </header>
+
+    <!-- Executive summary band -->
+    <section class="exec-band">
+      <div class="exec-main">
+        <div class="exec-label">Executive Summary</div>
+        <div class="exec-headline" id="exec-headline">
+          Waiting for live data…
+        </div>
+        <div class="exec-subline" id="exec-subline">
+          As data flows in, this line gives a one-sentence story of speed, volume, and latency.
+        </div>
+        <div class="exec-tags">
+          <span class="status-chip" id="status-latency">
+            <span class="status-dot"></span>
+            <span id="status-latency-text">Latency: assessing…</span>
+          </span>
+          <span class="status-chip" id="status-volume">
+            <span class="status-dot"></span>
+            <span id="status-volume-text">Traffic: assessing…</span>
+          </span>
+        </div>
+      </div>
+      <div class="exec-right">
+        <div class="tiny-label">Lookback configuration</div>
+        <div>
+          KPI window: <strong id="exec-kpi-window">–</strong> ·
+          Trend horizon: <strong>Last 6 hours / 7 days</strong>
+        </div>
+        <div class="tiny-label" id="last-updated">Last refreshed: –</div>
+      </div>
+    </section>
+
+    <!-- KPI cards -->
+    <section class="grid-kpi">
+      <article class="card" id="kpi-card-latest">
+        <div class="card-inner">
+          <div class="kpi-label">
+            <span>Latest Detected Peak Speed</span>
+            <span class="tag">Live mph</span>
+          </div>
+          <div class="kpi-value" id="kpi-latest-speed">–</div>
+          <div class="kpi-footnote">
+            <span>Most recent detection in stream.</span>
+            <span class="accent" id="kpi-window-label"></span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="kpi-card-avg">
+        <div class="card-inner">
+          <div class="kpi-label">
+            <span>Average Speed (Window)</span>
+            <span class="tag">Rolling mph</span>
+          </div>
+          <div class="kpi-value" id="kpi-avg-speed">–</div>
+          <div class="kpi-footnote">
+            <span>Window over recent RUSH activity.</span>
+            <span id="kpi-avg-speed-window" class="accent"></span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="kpi-card-det">
+        <div class="card-inner">
+          <div class="kpi-label">
+            <span>Detection Rate (Window)</span>
+            <span class="tag">Per sensor</span>
+          </div>
+          <div class="kpi-value" id="kpi-vehicles">–</div>
+          <div class="kpi-footnote">
+            <span id="kpi-vehicles-note-left">
+              Each value is detections / min / sensor across the network.
+            </span>
+            <span id="kpi-vehicles-note" class="accent"></span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="kpi-card-lat">
+        <div class="card-inner">
+          <div class="kpi-label">
+            <span>Median End-to-End Latency</span>
+            <span class="tag">Sensor → Render</span>
+          </div>
+          <div class="kpi-value" id="kpi-latency">–</div>
+          <div class="kpi-footnote">
+            <span>50% of detections render in this time or faster.</span>
+            <span id="kpi-latency-note"></span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Toolbar -->
+    <section class="toolbar">
+      <div class="toolbar-left">
+        <span>Window:</span>
+        <select id="window-select">
+          <option value="5">Last 5 minutes</option>
+          <option value="15">Last 15 minutes</option>
+          <option value="30">Last 30 minutes</option>
+          <option value="60" selected>Last 60 minutes</option>
+        </select>
+        <span>Histogram bin width (mph):</span>
+        <select id="hist-bin-select">
+          <option value="2">2</option>
+          <option value="5" selected>5</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <button class="refresh-btn" id="refresh-btn">
+          <span class="icon">⟳</span>
+          <span>Refresh data</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Trend + latency row -->
+    <section class="grid-main">
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Traffic &amp; Volume</span>
+            <span class="tag">Last <span id="trend-hours-label">6</span> hours</span>
+          </div>
+          <div class="card-subtitle">
+            Average peak speed vs total RUSH throughput. Instantly shows congestion and flow changes.
+          </div>
+          <div id="chart-peak-speed" class="chart-container tall"></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Pipeline Reliability &amp; Latency</span>
+            <span class="tag">p50 / p90 / p99</span>
+          </div>
+          <div class="card-subtitle">
+            End-to-end latency percentiles plus median latency by pipeline stage.
+          </div>
+          <div id="chart-latency-time" class="chart-container short"></div>
+          <div id="chart-latency-breakdown" class="chart-container short"></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 3-up row -->
+    <section class="grid-row">
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Speed Distribution (Window)</span>
+            <span class="tag">Histogram</span>
+          </div>
+          <div class="card-subtitle">
+            Distribution of measured vehicle speeds over the current window. Bin width is adjustable above.
+          </div>
+          <div id="chart-speed-hist" class="chart-container"></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Network Anatomy – Where Are We Busy?</span>
+            <span class="tag">Top locations</span>
+          </div>
+          <div class="card-subtitle">
+            Volume and average speed by street and direction (mapped from locations).
+          </div>
+          <div id="chart-location-snap" class="chart-container"></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Behaviour Profile</span>
+            <span class="tag">Speed vs detections/min</span>
+          </div>
+          <div class="card-subtitle">
+            Each point is one sensor (PMGID): average peak speed vs detections per minute at that sensor.
+          </div>
+          <div id="chart-speed-scatter" class="chart-container"></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 3-up row 2 -->
+    <section class="grid-row" style="margin-top: 14px;">
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Daily Stability &amp; Pipeline Evolution</span>
+            <span class="tag">Speed percentiles</span>
+          </div>
+          <div class="card-subtitle">
+            p50 / p85 / p95 peak speeds per day. Quickly surfaces step-changes.
+          </div>
+          <div id="chart-speed-daily" class="chart-container"></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Hotspots – By Location</span>
+            <span class="tag">Top PMGIDs</span>
+          </div>
+          <div class="card-subtitle">
+            Highest-volume PMGIDs, labelled with street / location when available.
+          </div>
+          <div id="chart-pmg-volume" class="chart-container"></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-inner">
+          <div class="card-title">
+            <span>Hourly Profile (Last 7 days)</span>
+            <span class="tag">Demand curve</span>
+          </div>
+          <div class="card-subtitle">
+            Hour-of-day profile: how volume and speed vary through a typical day.
+          </div>
+          <div id="chart-hourly" class="chart-container"></div>
+        </div>
+      </article>
+    </section>
+
+ <!-- ============================= -->
+  <!-- 🔥 NEW GRAPHS START HERE 🔥 -->
+  <!-- ============================= -->
+
+ <!-- 3-up row: Heatmap + Bubble + Pie -->
+<section class="grid-row" style="margin-top: 14px;">
+
+  <!-- Heatmap -->
+  <article class="card">
+    <div class="card-inner">
+      <div class="card-title">
+        <span>Speed × Time × Vehicle Count</span>
+        <span class="tag">Heatmap</span>
+      </div>
+      <div class="card-subtitle">
+        Heatmap showing vehicle count intensity across time and speed ranges.
+      </div>
+      <div id="chart-heatmap" class="chart-container"></div>
+    </div>
+  </article>
+
+  <!-- Bubble Plot -->
+  <article class="card">
+    <div class="card-inner">
+      <div class="card-title">
+        <span>Location Bubble Plot</span>
+        <span class="tag">Coordinates</span>
+      </div>
+      <div class="card-subtitle">
+        Bubble chart plotting sensors by latitude, longitude, and volume.
+      </div>
+      <div id="chart-location-bubble" class="chart-container"></div>
+    </div>
+  </article>
+
+  <!-- Direction Pie Chart -->
+  <article class="card">
+    <div class="card-inner">
+      <div class="card-title">
+        <span>Direction Distribution</span>
+        <span class="tag">Pie Chart</span>
+      </div>
+      <div class="card-subtitle">
+        Percentage of detections by travel direction.
+      </div>
+      <div id="chart-direction" class="chart-container"></div>
+    </div>
+  </article>
+
+</section>
+
+
+
+
+  <!-- ========== Live Peak Speed Stream (full row) ========== -->
+<!-- Full-width row: Live Peak Speed Stream -->
+<section class="grid-row-full" style="margin-top: 14px;">
+  <article class="card">
+    <div class="card-inner">
+      <div class="card-title">
+        <span>Live Peak Speed Stream</span>
+        <span class="tag">Live</span>
+      </div>
+      <div class="card-subtitle">
+        Individual peak-speed samples plotted as they arrive.
+      </div>
+      <div id="chart-live-speed" class="chart-container tall"></div>
+    </div>
+  </article>
+</section>
+
+
+
+
+  <!-- ============================= -->
+  <!-- 🔥 NEW GRAPHS END HERE 🔥 -->
+  <!-- ============================= -->
+
+    <footer>
+      <span>
+        Live RUSH window: <strong id="footer-window"></strong> ·
+        Trend horizon: <strong>Last 6 hours / 7 days look-back</strong>
+      </span>
+      <span id="footer-health-note"></span>
+    </footer>
+  </div>
+
+
+
+  <script>
+    // Highcharts global styling
+    Highcharts.setOptions({
+      chart: {
+        backgroundColor: "transparent",
+        style: {
+          fontFamily:
+            'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", sans-serif'
+        }
+      },
+      title: { text: "" },
+      credits: { enabled: false },
+      legend: {
+        itemStyle: { color: "#e5e7eb", fontSize: "11px" },
+        itemHoverStyle: { color: "#f9fafb" }
+      },
+      xAxis: {
+        labels: { style: { color: "#9ca3af", fontSize: "10px" } },
+        lineColor: "rgba(148,163,184,0.4)",
+        tickColor: "rgba(148,163,184,0.4)"
+      },
+      yAxis: {
+        labels: { style: { color: "#9ca3af", fontSize: "10px" } },
+        title: { style: { color: "#9ca3af", fontSize: "11px" } },
+        gridLineColor: "rgba(30,64,175,0.35)"
+      },
+      tooltip: {
+        shared: true,
+        backgroundColor: "rgba(15,23,42,0.98)",
+        borderColor: "rgba(148,163,184,0.6)",
+        style: { color: "#e5e7eb", fontSize: "11px" }
+      },
+      colors: ["#38bdf8", "#6366f1", "#22c55e", "#f97316", "#a855f7", "#0ea5e9"]
+    });
+
+    const $ = (id) => document.getElementById(id);
+
+    const windowSelect = $("window-select");
+    const histBinSelect = $("hist-bin-select");
+    const trendHoursLabel = $("trend-hours-label");
+    const footerWindow = $("footer-window");
+    const footerHealthNote = $("footer-health-note");
+
+    function setLastUpdated(latestTsIso, ageSeconds) {
+      const now = new Date();
+      let label = "Last refreshed: " + now.toLocaleTimeString();
+      if (latestTsIso) {
+        const latest = new Date(latestTsIso);
+        let ageStr = "";
+        if (typeof ageSeconds === "number") {
+          if (ageSeconds < 60) {
+            ageStr = `${Math.round(ageSeconds)}s`;
+          } else if (ageSeconds < 3600) {
+            ageStr = `${Math.round(ageSeconds / 60)} min`;
+          } else {
+            ageStr = `${Math.round(ageSeconds / 3600)} h`;
+          }
+        }
+        label += ` · Last event: ${latest.toLocaleTimeString()}${
+          ageStr ? ` (${ageStr} ago${ageSeconds > 120 ? " – data is stale" : ""})` : ""
+        }`;
+      }
+      $("last-updated").textContent = label;
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function setNoData(chart, hasData, message) {
+      if (!chart) return;
+      if (!hasData) chart.showLoading(message || "No data in this period");
+      else chart.hideLoading();
+    }
+
+    // ---- KPI & health ----
+    async function loadHealth() {
+      try {
+        const data = await fetchJSON("/api/health");
+        if (data.ok) {
+          $("health-status").textContent = `Pipeline healthy · DB: ${data.db}`;
+          footerHealthNote.textContent =
+            "System is connected to Azure MySQL and latency metrics are live.";
+        } else {
+          $("health-status").textContent = "Pipeline issue – see logs";
+          footerHealthNote.textContent = "Health endpoint reports an issue.";
+        }
+      } catch (err) {
+        console.error("health error", err);
+        $("health-status").textContent = "Pipeline unreachable";
+        footerHealthNote.textContent = "Dashboard cannot reach the API.";
+      }
+    }
+
+    function formatMph(v) {
+      if (v == null) return "–";
+      return v.toFixed(1) + " mph";
+    }
+
+    function formatLatencyMs(ms) {
+      if (ms == null) return "–";
+      if (ms < 1000) return ms.toFixed(0) + " ms";
+      return (ms / 1000).toFixed(2) + " s";
+    }
+
+    function classifyLatency(ms) {
+      if (ms == null) return "unknown";
+      if (ms <= 700) return "good";
+      if (ms <= 1500) return "warn";
+      return "bad";
+    }
+
+    function classifyVolume(detectionsPerMin) {
+      if (detectionsPerMin == null) return "unknown";
+      if (detectionsPerMin <= 10) return "light";
+      if (detectionsPerMin <= 30) return "moderate";
+      return "heavy";
+    }
+
+    function updateStatusChips(kpi, stale) {
+      const med = kpi.median_pipeline_time;
+      const latStatus = classifyLatency(med);
+      const chip = $("status-latency");
+      chip.classList.remove("warn", "bad");
+      let latText;
+
+      if (stale) {
+        latText = "Latency status based on last completed run (data is stale).";
+      } else if (latStatus === "good") {
+        latText = `Latency on-target (${formatLatencyMs(med)})`;
+      } else if (latStatus === "warn") {
+        chip.classList.add("warn");
+        latText = `Latency elevated (${formatLatencyMs(med)})`;
+      } else if (latStatus === "bad") {
+        chip.classList.add("bad");
+        latText = `Latency high (${formatLatencyMs(med)})`;
+      } else {
+        latText = "Latency not available";
+      }
+      $("status-latency-text").textContent = latText;
+
+      const perMinTotal =
+        kpi.events_per_minute_total ?? kpi.events_per_minute ?? null;
+      const volStatus = classifyVolume(perMinTotal);
+      const chip2 = $("status-volume");
+      chip2.classList.remove("warn", "bad");
+      let volText;
+
+      if (stale) {
+        volText = "Traffic based on the last window; no new live detections.";
+      } else if (volStatus === "light") {
+        volText = `Traffic light (~${Math.round(perMinTotal || 0)} detections/min)`;
+      } else if (volStatus === "moderate") {
+        chip2.classList.add("warn");
+        volText = `Traffic moderate (~${Math.round(perMinTotal || 0)} detections/min)`;
+      } else if (volStatus === "heavy") {
+        chip2.classList.add("bad");
+        volText = `Traffic heavy (~${Math.round(perMinTotal || 0)} detections/min)`;
+      } else {
+        volText = "Traffic level unknown";
+      }
+      $("status-volume-text").textContent = volText;
+
+      // Executive headline + subline
+      const latest = kpi.latest_speed;
+      const avgSpeed = kpi.avg_speed;
+      const win = kpi.avg_speed_window;
+
+      let headline;
+      let subline;
+
+      if (stale) {
+        headline = "No live detections – showing last completed RUSH activity.";
+        const avgStr = avgSpeed != null ? `${avgSpeed.toFixed(1)} mph` : "–";
+        const latestStr = latest != null ? `${latest.toFixed(1)} mph` : "–";
+        subline = `Last captured run shows latest peak at ${latestStr} and a rolling average of ${avgStr} over the last ${win} minutes.`;
+      } else {
+        if (latStatus === "good" && volStatus === "light") {
+          headline = "Traffic is light and the pipeline is running fast.";
+        } else if (latStatus === "good" && volStatus === "moderate") {
+          headline =
+            "Traffic is healthy and the pipeline is keeping up comfortably.";
+        } else if (latStatus === "warn" && volStatus !== "heavy") {
+          headline = "Pipeline is holding, but latency is starting to rise.";
+        } else if (latStatus === "bad") {
+          headline = "Action required: end-to-end latency is above target.";
+        } else if (volStatus === "heavy") {
+          headline =
+            "We are in a high-traffic period – watch latency and hotspots.";
+        } else {
+          headline = "Live RUSH telemetry is online.";
+        }
+
+        const avgStr = avgSpeed != null ? `${avgSpeed.toFixed(1)} mph` : "–";
+        const latestStr = latest != null ? `${latest.toFixed(1)} mph` : "–";
+        subline = `Latest detection at ${latestStr}; rolling average ${avgStr} over the last ${win} minutes.`;
+      }
+
+      $("exec-headline").textContent = headline;
+      $("exec-subline").textContent = subline;
+    }
+
+    async function loadKpi() {
+      const mins = Number(windowSelect.value);
+      try {
+        const data = await fetchJSON(`/api/kpi?mins=${mins}`);
+
+        const stale =
+          typeof data.data_age_seconds === "number" &&
+          data.data_age_seconds > 120; // >2 minutes with no new data
+
+        document.body.classList.toggle("stale", stale);
+        ["kpi-card-latest", "kpi-card-avg", "kpi-card-det", "kpi-card-lat"].forEach(
+          (id) => {
+            const el = $(id);
+            if (el) el.classList.toggle("stale", stale);
+          }
+        );
+
+        $("kpi-latest-speed").textContent = formatMph(data.latest_speed);
+        $("kpi-avg-speed").textContent = formatMph(data.avg_speed);
+
+        const perSensor = data.events_per_minute_per_sensor;
+        const perMinTotal =
+          data.events_per_minute_total ?? data.events_per_minute ?? null;
+        const total = data.events_total ?? data.events ?? data.vehicles ?? 0;
+        const sensors = data.sensors_active ?? 0;
+
+        if (perSensor != null) {
+          $("kpi-vehicles").textContent =
+            perSensor.toFixed(1) + " / min / sensor";
+        } else if (perMinTotal != null) {
+          $("kpi-vehicles").textContent =
+            Math.round(perMinTotal).toLocaleString() + " / min";
+        } else {
+          $("kpi-vehicles").textContent = "–";
+        }
+
+        let noteParts = [];
+        if (perMinTotal != null) {
+          noteParts.push(
+            `~${Math.round(perMinTotal).toLocaleString()} detections/min overall`
+          );
+        }
+        if (total) {
+          noteParts.push(`${total.toLocaleString()} detections`);
+        }
+        if (data.avg_speed_window) {
+          noteParts.push(`last ${data.avg_speed_window} min`);
+        }
+        if (sensors) {
+          noteParts.push(`${sensors} active sensors`);
+        }
+        $("kpi-vehicles-note").textContent = noteParts.join(" · ");
+
+        $("kpi-window-label").textContent =
+          `Rolling ${data.avg_speed_window}-minute window`;
+        $("kpi-avg-speed-window").textContent =
+          `Last ${data.avg_speed_window} minutes`;
+        $("exec-kpi-window").textContent =
+          `Last ${data.avg_speed_window} minutes`;
+
+        $("kpi-latency").textContent = formatLatencyMs(
+          data.median_pipeline_time
+        );
+        $("kpi-latency-note").textContent =
+          data.median_pipeline_time != null
+            ? "Target: under 1 second. Values above 1.5s are highlighted."
+            : "Latency not available in this window.";
+
+        updateStatusChips(data, stale);
+        setLastUpdated(data.latest_ts, data.data_age_seconds);
+      } catch (err) {
+        console.error("kpi error", err);
+      }
+    }
+
+    // ---- Charts ----
+    let chartPeakSpeed,
+      chartLatencyTime,
+      chartLatencyBreakdown,
+      chartSpeedHist,
+      chartLocationSnap,
+      chartSpeedScatter,
+      chartSpeedDaily,
+      chartPmgVolume,
+      chartHourly,
+      chartHeatmap, //new graph
+      chartLocationBubble,   // new graph
+      chartDirectionPie,    // new graph
+      chartLiveSpeedStream; // new graph
+
+    function initCharts() {
+      chartPeakSpeed = Highcharts.chart("chart-peak-speed", {
+        chart: { zoomType: "x" },
+        xAxis: { type: "category" },
+        yAxis: [
+          {
+            title: { text: "Avg peak speed (mph)" }
+          },
+          {
+            title: { text: "Events / minute" },
+            opposite: true
+          }
+        ],
+        series: [
+          {
+            type: "line",
+            name: "Avg peak speed",
+            data: [],
+            tooltip: { valueSuffix: " mph" }
+          },
+          {
+            type: "column",
+            name: "Events / minute",
+            yAxis: 1,
+            data: [],
+            opacity: 0.7
+          }
+        ]
+      });
+
+      chartLatencyTime = Highcharts.chart("chart-latency-time", {
+        chart: { zoomType: "x" },
+        xAxis: { type: "category" },
+        yAxis: {
+          title: { text: "End-to-end latency (ms)" }
+        },
+        series: [
+          { type: "line", name: "p50", data: [] },
+          { type: "line", name: "p90", data: [] },
+          { type: "line", name: "p99", data: [] }
+        ]
+      });
+
+      chartLatencyBreakdown = Highcharts.chart("chart-latency-breakdown", {
+        chart: { type: "bar" },
+        xAxis: {
+          categories: [],
+          title: { text: "" }
+        },
+        yAxis: {
+          title: { text: "Median latency (ms)" }
+        },
+        series: [
+          {
+            name: "Median latency",
+            data: []
+          }
+        ]
+      });
+
+      chartSpeedHist = Highcharts.chart("chart-speed-hist", {
+        chart: { type: "column" },
+        xAxis: {
+          title: { text: "Speed (mph)" }
+        },
+        yAxis: {
+          title: { text: "Count" }
+        },
+        plotOptions: {
+          column: {
+            pointPadding: 0,
+            groupPadding: 0.05,
+            borderWidth: 0
+          }
+        },
+        series: [
+          {
+            name: "Detections",
+            data: []
+          }
+        ]
+      });
+
+      chartLocationSnap = Highcharts.chart("chart-location-snap", {
+        chart: { type: "bar" },
+        xAxis: {
+          categories: [],
+          title: { text: "" }
+        },
+        yAxis: [
+          {
+            title: { text: "Volume (events)" }
+          },
+          {
+            title: { text: "Avg speed (mph)" },
+            opposite: true
+          }
+        ],
+        series: [
+          { name: "Volume", data: [] },
+          {
+            type: "line",
+            name: "Avg speed",
+            yAxis: 1,
+            data: [],
+            tooltip: { valueSuffix: " mph" }
+          }
+        ]
+      });
+
+      chartSpeedScatter = Highcharts.chart("chart-speed-scatter", {
+        chart: { type: "scatter", zoomType: "xy" },
+        xAxis: {
+          title: { text: "Average peak speed (mph)" },
+          minPadding: 0.05,
+          maxPadding: 0.05
+        },
+        yAxis: {
+          title: { text: "Detections per minute per sensor" },
+          min: 0
+        },
+        plotOptions: {
+          scatter: {
+            marker: {
+              radius: 3,
+              symbol: "circle",
+              lineWidth: 0,
+              fillOpacity: 0.7
+            },
+            tooltip: {
+              pointFormat:
+                "<span style=\"color:{series.color}\">\u25CF</span> " +
+                "Speed: <b>{point.x:.1f} mph</b><br/>" +
+                "Detections/min/sensor: <b>{point.y:.2f}</b><br/>"
+            }
+          }
+        },
+        series: [{ name: "Sensor behaviour", data: [] }]
+      });
+
+      chartSpeedDaily = Highcharts.chart("chart-speed-daily", {
+        xAxis: { type: "category" },
+        yAxis: { title: { text: "Peak speed (mph)" } },
+        series: [
+          { type: "line", name: "p50", data: [] },
+          { type: "line", name: "p85", data: [] },
+          { type: "line", name: "p95", data: [] }
+        ]
+      });
+
+      chartPmgVolume = Highcharts.chart("chart-pmg-volume", {
+        chart: { type: "bar" },
+        xAxis: { categories: [], title: { text: "" } },
+        yAxis: { title: { text: "Events" } },
+        series: [{ name: "Events", data: [] }]
+      });
+
+      chartHourly = Highcharts.chart("chart-hourly", {
+  xAxis: { categories: [], title: { text: "Hour of day" } },
+  yAxis: [
+    { title: { text: "Volume" } },
+    {
+      title: { text: "Avg speed (mph)" },
+      opposite: true
+    }
+  ],
+  series: [
+    { type: "column", name: "Volume", data: [] },
+    {
+      type: "spline",
+      name: "Avg speed",
+      yAxis: 1,
+      data: [],
+      tooltip: { valueSuffix: " mph" }
+    }
+  ]
+});
+
+// ------------------ NEW CHART: HEATMAP ------------------
+chartHeatmap = Highcharts.chart("chart-heatmap", {
+  chart: { type: "heatmap" },
+  legend: { enabled: true },
+  exporting: { enabled: true },
+  navigation: { buttonOptions: { enabled: true } },
+
+  xAxis: { title: { text: "Time (min)" }, categories: [] },
+  yAxis: { title: { text: "Speed (mph)" }, categories: [] },
+
+  colorAxis: {
+    min: 0,
+    stops: [
+      [0, "#1e3a8a"],
+      [0.5, "#3b82f6"],
+      [1, "#f43f5e"]
+    ]
+  },
+
+  series: [{
+    name: "Vehicle Count",
+    borderWidth: 0,
+    data: []
+  }]
+});
+
+
+// ------------------ NEW CHART: LOCATION BUBBLE ------------------
+chartLocationBubble = Highcharts.chart("chart-location-bubble", {
+  chart: { type: "bubble", plotBorderWidth: 1, zoomType: "xy" },
+  legend: { enabled: true },
+  exporting: { enabled: true },
+  navigation: { buttonOptions: { enabled: true } },
+
+  xAxis: { title: { text: "Longitude" } },
+  yAxis: { title: { text: "Latitude" } },
+
+  series: [{
+    name: "Sensors",
+    data: []
+  }]
+});
+
+
+chartDirectionPie = Highcharts.chart("chart-direction", {
+  chart: { type: "pie" },
+  legend: { enabled: true },
+  exporting: { enabled: true },
+  navigation: { buttonOptions: { enabled: true } },
+
+  title: { text: "" },
+
+  series: [{
+    name: "Direction",
+    colorByPoint: true,
+    data: []   // NB / SB / EB / WB
+  }]
+});
+
+
+chartLiveSpeedStream = Highcharts.chart("chart-live-speed", {
+  chart: {
+    type: "spline",
+    animation: Highcharts.svg,
+    marginRight: 15
+  },
+  xAxis: { type: "datetime" },
+  yAxis: {
+    title: { text: "Peak speed (mph)" }
+  },
+  series: [{
+    name: "Peak Speed",
+    data: []
+  }]
+});
+
+}
+
+
+    async function loadPeakSpeedAndThroughput() {
+      try {
+        const [speed, thru] = await Promise.all([
+          fetchJSON("/api/series/peak_speed_trend"),
+          fetchJSON("/api/agg/throughput_total")
+        ]);
+        const cats = speed.categories || [];
+        chartPeakSpeed.xAxis[0].setCategories(cats, false);
+        chartPeakSpeed.series[0].setData(speed.series[0]?.data || [], false);
+
+        const throughputMap = {};
+        const tCats = thru.categories || [];
+        const tData = thru.series?.[0]?.data || [];
+        tCats.forEach((c, i) => {
+          throughputMap[c] = tData[i] || 0;
+        });
+        const alignedThroughput = cats.map((c) => throughputMap[c] || 0);
+        chartPeakSpeed.series[1].setData(alignedThroughput, false);
+
+        chartPeakSpeed.redraw();
+        setNoData(
+          chartPeakSpeed,
+          cats.length > 0,
+          "No data in last 6 hours"
+        );
+      } catch (err) {
+        console.error("peak/thru error", err);
+        setNoData(chartPeakSpeed, false, "Error loading data");
+      }
+    }
+
+    async function loadLatencyCharts() {
+      try {
+        const [timeSeries, stages] = await Promise.all([
+          fetchJSON("/api/agg/pipeline_latency"),
+          fetchJSON("/api/latency_breakdown_stages")
+        ]);
+
+        const cats = timeSeries.categories || [];
+        chartLatencyTime.xAxis[0].setCategories(cats, false);
+        chartLatencyTime.series[0].setData(timeSeries.p50 || [], false);
+        chartLatencyTime.series[1].setData(timeSeries.p90 || [], false);
+        chartLatencyTime.series[2].setData(timeSeries.p99 || [], false);
+        chartLatencyTime.redraw();
+        setNoData(
+          chartLatencyTime,
+          cats.length > 0,
+          "No latency data in last 6 hours"
+        );
+
+        const stageCats = stages.stages || [];
+        chartLatencyBreakdown.xAxis[0].setCategories(stageCats, false);
+        chartLatencyBreakdown.series[0].setData(stages.medians || [], false);
+        chartLatencyBreakdown.redraw();
+        setNoData(
+          chartLatencyBreakdown,
+          stageCats.length > 0,
+          "No latency rows in view"
+        );
+      } catch (err) {
+        console.error("latency error", err);
+        setNoData(chartLatencyTime, false, "Error loading data");
+        setNoData(chartLatencyBreakdown, false, "Error loading data");
+      }
+    }
+
+    async function loadHistogram() {
+      const binWidth = Number(histBinSelect.value);
+      const mins = Number(windowSelect.value);
+      try {
+        const data = await fetchJSON(
+          `/api/agg/speed_histogram?bin_width=${binWidth}&mins=${mins}`
+        );
+        const points = (data.centers || []).map((c, i) => ({
+          x: c,
+          y: data.counts[i] || 0
+        }));
+        chartSpeedHist.update(
+          {
+            xAxis: {
+              tickInterval: binWidth,
+              min:
+                points.length > 0
+                  ? Math.max(0, points[0].x - binWidth)
+                  : undefined,
+              max:
+                points.length > 0
+                  ? points[points.length - 1].x + binWidth
+                  : undefined
+            }
+          },
+          false
+        );
+        chartSpeedHist.series[0].setData(points, true);
+        setNoData(
+          chartSpeedHist,
+          points.length > 0,
+          "No speeds in this window"
+        );
+      } catch (err) {
+        console.error("histogram error", err);
+        setNoData(chartSpeedHist, false, "Error loading data");
+      }
+    }
+
+    async function loadLocationSnapshot() {
+      const mins = Number(windowSelect.value);
+      try {
+        const data = await fetchJSON(
+          `/api/location_direction_snapshot?mins=${mins}`
+        );
+        const cats = data.categories || [];
+        chartLocationSnap.xAxis[0].setCategories(cats, false);
+        chartLocationSnap.series[0].setData(data.volume || [], false);
+        chartLocationSnap.series[1].setData(data.avg_speed || [], false);
+        chartLocationSnap.redraw();
+        setNoData(
+          chartLocationSnap,
+          cats.length > 0,
+          "No locations in this window"
+        );
+      } catch (err) {
+        console.error("location snapshot error", err);
+        setNoData(chartLocationSnap, false, "Error loading data");
+      }
+    }
+
+    async function loadSpeedScatter() {
+      const mins = Number(windowSelect.value);
+      try {
+        const data = await fetchJSON(
+          `/api/agg/speed_vs_vehicle_scatter?mins=${mins}`
+        );
+        const pts = data.series?.[0]?.data || [];
+        chartSpeedScatter.series[0].setData(pts, true);
+        setNoData(
+          chartSpeedScatter,
+          pts.length > 0,
+          "No sensor observations in this window"
+        );
+      } catch (err) {
+        console.error("scatter error", err);
+        setNoData(chartSpeedScatter, false, "Error loading data");
+      }
+    }
+
+    async function loadSpeedDaily() {
+      try {
+        const data = await fetchJSON("/api/agg/speed_percentiles_daily");
+        const cats = data.categories || [];
+        chartSpeedDaily.xAxis[0].setCategories(cats, false);
+        const s = data.series || [];
+        chartSpeedDaily.series[0].setData(s[0]?.data || [], false);
+        chartSpeedDaily.series[1].setData(s[1]?.data || [], false);
+        chartSpeedDaily.series[2].setData(s[2]?.data || [], false);
+        chartSpeedDaily.redraw();
+        setNoData(
+          chartSpeedDaily,
+          cats.length > 0,
+          "No daily history in look-back window"
+        );
+      } catch (err) {
+        console.error("daily speed error", err);
+        setNoData(chartSpeedDaily, false, "Error loading data");
+      }
+    }
+
+    async function loadPmgVolume() {
+      try {
+        const data = await fetchJSON("/api/agg/pmgid_volume");
+        const cats = data.categories || [];
+        chartPmgVolume.xAxis[0].setCategories(cats, false);
+        chartPmgVolume.series[0].setData(data.series?.[0]?.data || [], true);
+        setNoData(
+          chartPmgVolume,
+          cats.length > 0,
+          "No hotspots in last 6 hours"
+        );
+      } catch (err) {
+        console.error("pmg volume error", err);
+        setNoData(chartPmgVolume, false, "Error loading data");
+      }
+    }
+
+    async function loadHourlyProfile() {
+      try {
+        const data = await fetchJSON("/api/hourly_profile");
+        const hours = (data.hours || []).map((h) => `${h}:00`);
+        chartHourly.xAxis[0].setCategories(hours, false);
+        chartHourly.series[0].setData(data.volume || [], false);
+        chartHourly.series[1].setData(data.avg_speed || [], false);
+        chartHourly.redraw();
+        setNoData(
+          chartHourly,
+          hours.length > 0,
+          "No hourly history in look-back window"
+        );
+      } catch (err) {
+        console.error("hourly profile error", err);
+        setNoData(chartHourly, false, "Error loading data");
+      }
+    }
+
+    async function loadAll() {
+      footerWindow.textContent = `Last ${windowSelect.value} minutes`;
+      await Promise.all([
+        loadHealth(),
+        loadKpi(),
+        loadPeakSpeedAndThroughput(),
+        loadLatencyCharts(),
+        loadHistogram(),
+        loadLocationSnapshot(),
+        loadSpeedScatter(),
+        loadSpeedDaily(),
+        loadPmgVolume(),
+        loadHourlyProfile(),
+        loadHeatmap(),         // new
+        loadLocationBubble(),  //new
+        loadDirectionPie(),    //new
+        loadLiveSpeedStream()  // new
+      ]);
+    }
+
+    // ------------------ NEW LOAD FUNCTION: HEATMAP ------------------
+async function loadHeatmap() {
+  try {
+    const data = await fetchJSON("/api/heatmap");
+
+    chartHeatmap.xAxis[0].setCategories(data.times || [], false);
+    chartHeatmap.yAxis[0].setCategories(data.speeds || [], false);
+    chartHeatmap.series[0].setData(data.values || [], true);
+
+    setNoData(chartHeatmap, (data.values || []).length > 0, "No heatmap data");
+  } catch (err) {
+    console.error("heatmap error", err);
+    setNoData(chartHeatmap, false, "Error loading data");
+  }
+}
+
+// ------------------ NEW LOAD FUNCTION: BUBBLE MAP ------------------
+async function loadLocationBubble() {
+  try {
+    const data = await fetchJSON("/api/location_bubble");
+
+    // data.points = [ { x: lon, y: lat, z: volume }, ... ]
+    chartLocationBubble.series[0].setData(data.points || [], true);
+
+    setNoData(chartLocationBubble, (data.points || []).length > 0, "No location data");
+  } catch (err) {
+    console.error("bubble error", err);
+    setNoData(chartLocationBubble, false, "Error loading data");
+  }
+}
+
+async function loadDirectionPie() {
+  try {
+    const data = await fetchJSON("/api/direction_distribution");
+    chartDirectionPie.series[0].setData(data.data || [], true);
+    setNoData(chartDirectionPie, (data.data || []).length > 0, "No direction data");
+  } catch (err) {
+    console.error("direction pie error", err);
+    setNoData(chartDirectionPie, false, "Error loading data");
+  }
+}
+
+async function loadLiveSpeedStream() {
+  try {
+    const data = await fetchJSON("/api/live_speed");
+
+    // data.points = [ [timestamp_ms, speed_mph], ... ]
+    chartLiveSpeedStream.series[0].setData(data.points || [], true);
+
+    setNoData(chartLiveSpeedStream, (data.points || []).length > 0, "No live speed data");
+  } catch (err) {
+    console.error("live speed error", err);
+    setNoData(chartLiveSpeedStream, false, "Error loading data");
+  }
+}
+
+
+
+    window.addEventListener("DOMContentLoaded", () => {
+      trendHoursLabel.textContent = "6";
+      footerWindow.textContent = `Last ${windowSelect.value} minutes`;
+
+      initCharts();
+      loadAll();
+
+      windowSelect.addEventListener("change", () => {
+        loadAll();
+      });
+
+      histBinSelect.addEventListener("change", () => {
+        loadHistogram();
+      });
+
+      $("refresh-btn").addEventListener("click", () => {
+        loadAll();
+      });
+
+      setInterval(loadAll, 30000);
+    });
+  </script>
+</body>
+</html>

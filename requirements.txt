@@ -1,0 +1,7 @@
+kafka-python
+mysql-connector-python
+flask
+flask-cors
+python-dotenv
+certifi
+cors
